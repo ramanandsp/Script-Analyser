@@ -530,7 +530,7 @@ def set_manual_location_coordinates(project_id: int, payload: ManualLocationUpda
 @app.get("/api/projects/{project_id}/schedule")
 def get_project_schedule(
     project_id: int,
-    strategy: str = Query("sequential", enum=["sequential", "by_location"]),
+    strategy: str = Query("sequential", pattern="^(sequential|by_location)$"),
     user: dict = Depends(get_current_user),
 ):
     with connection() as conn:
