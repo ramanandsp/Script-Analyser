@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: script-analyser-pro
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: APP_AUTHOR
+        value: Ramanand S P
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: OMDB_API_KEY
+        sync: false
+      - key: DEMO_USER_EMAIL
+        value: faculty@scriptanalyser.com
+      - key: DEMO_USER_PASSWORD
+        value: FacultyDemo2026!
+      - key: CORS_ORIGINS
+        value: "*"

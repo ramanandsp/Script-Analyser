@@ -1,0 +1,9 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+script_analyser.db
+script_analyser_backup.db

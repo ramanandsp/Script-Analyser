@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Script Analyser Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="/static/styles.css">
+  <!-- Supabase Auth & Cloud Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <div class="brand"><span class="brand-mark">▥</span><span>Script Analyser</span></div>
+    <button class="new-btn" id="newProjectBtn">＋ New analysis</button>
+    <div class="nav-label">WORKSPACE</div>
+    <nav id="mainNav">
+      <button class="nav-item active" data-page="overview">◫ <span>Overview</span></button>
+      <button class="nav-item" data-page="production">▤ <span>Production</span></button>
+      <button class="nav-item" data-page="schedule">▦ <span>Schedule</span></button>
+      <button class="nav-item" data-page="characters">♙ <span>Characters</span></button>
+      <button class="nav-item" data-page="locations">⌖ <span>Locations</span></button>
+      <button class="nav-item" data-page="budget">₹ <span>Budget</span></button>
+      <button class="nav-item" data-page="market">↗ <span>Market</span></button>
+    </nav>
+    <div class="nav-label recent-label">RECENT SCRIPTS <span id="projectCount">0</span></div>
+    <div id="recentProjects" class="recent-projects"><p class="muted small">No projects yet</p></div>
+    <div class="sidebar-footer">
+      <div class="avatar" id="userAvatar">RS</div>
+      <div style="flex:1;min-width:0">
+        <strong id="userName" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Ramanand S P</strong>
+        <small id="userEmail" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">author@local</small>
+      </div>
+      <button class="logout-btn" id="logoutBtn" title="Sign out" aria-label="Sign out">↪</button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <div class="breadcrumbs"><span>My scripts</span><span class="crumb-dot">›</span><strong id="currentProjectName">No project selected</strong></div>
+      <div class="top-actions">
+        <span class="user-badge-top" id="topUserBadge"><i class="badge-dot"></i> <span id="topUserStatus">Connected</span></span>
+        <button class="btn btn-light" id="exportBtn">Export report</button>
+      </div>
+    </header>
+    <div id="toast" class="toast" role="status"></div>
+    <section id="emptyState" class="empty-state">
+      <div class="empty-icon">▥</div><p class="eyebrow">SCRIPT ANALYSIS WORKSPACE</p>
+      <h1>Bring your story <em>into focus.</em></h1>
+      <p class="lead">Turn a screenplay into a practical production plan, with transparent cost estimates, scene scheduling, location mapping and current movie-market signals.</p>
+      <button class="btn btn-primary" id="emptyNewBtn">＋ Start a new analysis</button>
+      <div class="empty-note">Upload a screenplay in TXT, PDF, or DOCX format. Secure user projects are managed with Supabase cloud PostgreSQL.</div>
+    </section>
+    <section id="dashboard" class="dashboard hidden">
+      <div class="page-heading">
+        <div><p class="eyebrow" id="pageEyebrow">PROJECT OVERVIEW</p><h1 id="pageTitle">Bring your story <em>into focus.</em></h1>
+        <p id="pageDescription" class="lead">A practical production plan based on the screenplay you provide.</p></div>
+        <div class="heading-actions"><button class="btn btn-light" id="reanalyzeBtn">Re-analyse</button><button class="btn btn-primary" id="deleteProjectBtn">Delete script</button></div>
+      </div>
+      <div id="pageContent"></div>
+      <footer class="app-footer">Script Analyser <span>•</span> Created by <strong id="authorFooter">Ramanand S P</strong></footer>
+    </section>
+  </main>
+</div>
+
+<!-- ============================================================ -->
+<!-- AUTHENTICATION OVERLAY & LOGIN / REGISTRATION MODAL          -->
+<!-- ============================================================ -->
+<div id="authModal" class="auth-overlay hidden">
+  <div class="auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+    <div class="auth-brand">
+      <span class="brand-mark">▥</span>
+      <h2 id="authTitle">Script Analyser Pro</h2>
+    </div>
+    <p class="auth-subtitle">Screenplay intelligence, GIS location mapping & production planning.</p>
+
+    <div class="auth-tabs" role="tablist">
+      <button type="button" class="auth-tab active" id="tabSignIn" role="tab" aria-selected="true">Sign In</button>
+      <button type="button" class="auth-tab" id="tabSignUp" role="tab" aria-selected="false">Create Account</button>
+    </div>
+
+    <div id="authAlert" class="auth-error" role="alert"></div>
+    <div id="authSuccess" class="auth-success" role="status"></div>
+
+    <form id="authForm" class="auth-form" novalidate>
+      <div id="fullNameGroup" class="hidden">
+        <label for="authFullName">Full Name</label>
+        <input type="text" id="authFullName" autocomplete="name" placeholder="e.g. Christopher Nolan">
+      </div>
+
+      <div>
+        <label for="authEmail">Email Address</label>
+        <input type="email" id="authEmail" required autocomplete="email" placeholder="name@domain.com">
+      </div>
+
+      <div>
+        <label for="authPassword">Password</label>
+        <div class="password-box">
+          <input type="password" id="authPassword" required autocomplete="current-password" placeholder="At least 6 characters">
+          <button type="button" class="password-toggle-btn" id="togglePasswordBtn" title="Show / Hide password" aria-label="Toggle password visibility">👁</button>
+        </div>
+      </div>
+
+      <button type="submit" class="auth-btn-primary" id="authSubmitBtn">
+        <span id="authSubmitText">Sign In</span>
+        <span id="authSpinner" class="spinner hidden"></span>
+      </button>
+    </form>
+
+    <div class="demo-divider"><span>OR DEMONSTRATE</span></div>
+
+    <button type="button" class="btn-demo-access" id="demoAccessBtn">
+      <span>🎓</span> Faculty / Fast Demo Access
+    </button>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- NEW PROJECT MODAL                                            -->
+<!-- ============================================================ -->
+<div id="projectModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header"><div><p class="eyebrow">NEW PROJECT</p><h2>Analyse a screenplay</h2></div><button class="icon-btn" id="closeModalBtn" aria-label="Close">×</button></div>
+    <form id="projectForm">
+      <label>Project title<input name="title" required maxlength="180" placeholder="e.g. The Last Horizon"></label>
+      <label>Author / writer<input name="author" placeholder="Your name"></label>
+      <label>Paste screenplay text<textarea name="script_text" rows="8" placeholder="Paste your screenplay here, or upload a file below..."></textarea></label>
+      <label>Or upload screenplay (.txt, .pdf, .docx)<input name="file" type="file" accept=".txt,.pdf,.docx"></label>
+      <details class="settings-details"><summary>Budget assumptions (INR)</summary>
+        <div class="settings-grid">
+          <label>Cast / day<input name="cast_per_day" type="number" min="0" value="12000"></label>
+          <label>Crew / day<input name="crew_per_day" type="number" min="0" value="18000"></label>
+          <label>Equipment / day<input name="equipment_per_day" type="number" min="0" value="8000"></label>
+          <label>Locations / day<input name="location_per_day" type="number" min="0" value="5000"></label>
+          <label>Food & transport / day<input name="food_transport_per_day" type="number" min="0" value="6000"></label>
+          <label>Post-production / page<input name="postproduction_per_page" type="number" min="0" value="8000"></label>
+          <label>Minutes / scene<input name="minutes_per_scene" type="number" min="1" value="45"></label>
+          <label>Shooting hours / day<input name="shooting_hours_per_day" type="number" min="1" value="8"></label>
+        </div>
+      </details>
+      <div class="modal-actions"><button type="button" class="btn btn-light" id="cancelModalBtn">Cancel</button><button type="submit" class="btn btn-primary" id="createProjectSubmit">Analyse screenplay</button></div>
+      <p class="small muted">Estimates are planning assumptions, not vendor quotes. Scanned PDFs may need OCR.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- LOCATION GIS MODAL                                           -->
+<!-- ============================================================ -->
+<div id="locationModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">LOCATION GIS & FILMING COORDINATES</p>
+        <h2 id="locationModalTitle">Set Filming Location</h2>
+      </div>
+      <button class="icon-btn" id="closeLocationModalBtn" aria-label="Close">×</button>
+    </div>
+    <form id="locationModalForm">
+      <input type="hidden" id="locModalNameHidden" name="name">
+      <label>Location name (from screenplay)
+        <input id="locModalNameDisplay" type="text" readonly style="background:#f6f4ee;font-weight:700">
+      </label>
+      <label>Real-world filming address / place name
+        <input id="locModalAddress" name="display_name" placeholder="e.g. Trinity Buoy Wharf, London, UK" maxlength="200">
+      </label>
+      <div class="settings-grid">
+        <label>Latitude (-90 to +90)
+          <input id="locModalLat" name="latitude" type="number" step="any" min="-90" max="90" required placeholder="e.g. 51.5074">
+        </label>
+        <label>Longitude (-180 to +180)
+          <input id="locModalLon" name="longitude" type="number" step="any" min="-180" max="180" required placeholder="e.g. -0.1278">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-light" id="cancelLocationModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveLocationModalSubmit">Save & Update Map</button>
+      </div>
+      <p class="small muted">Coordinates are saved permanently and plotted on the interactive Leaflet map.</p>
+    </form>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCHEDULE STRATEGY MODAL                                      -->
+<!-- ============================================================ -->
+<div id="scheduleModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <p class="eyebrow">PRODUCTION PLANNING</p>
+        <h2>Shooting Schedule Options</h2>
+      </div>
+      <button class="icon-btn" id="closeScheduleModalBtn" aria-label="Close">×</button>
+    </div>
+    <form id="scheduleModalForm">
+      <label>Scheduling strategy
+        <select id="schedModalStrategy" name="strategy" style="width:100%;border:1px solid #e4e2db;border-radius:7px;padding:11px;margin-top:7px;background:#fff">
+          <option value="sequential">Script Order (Sequential narrative flow)</option>
+          <option value="by_location">Location-Optimized (Group by physical set to reduce moves)</option>
+        </select>
+      </label>
+      <div class="settings-grid">
+        <label>Minutes per scene
+          <input id="schedModalMins" name="minutes_per_scene" type="number" min="5" max="300" value="45" required>
+        </label>
+        <label>Shooting hours per day
+          <input id="schedModalHours" name="shooting_hours_per_day" type="number" min="1" max="24" value="8" required>
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-light" id="cancelScheduleModalBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="saveScheduleModalSubmit">Apply Schedule</button>
+      </div>
+      <p class="small muted">Estimates are for preliminary scheduling. Confirmed production schedules require actor availability and permit approvals.</p>
+    </form>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>
